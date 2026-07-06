@@ -129,7 +129,10 @@ export default function AdminPage({ onLogout }: AdminPageProps) {
       image: guideForm.image,
       languages: guideForm.langs.split(",").map(s => s.trim()),
       experienceYears: Number(guideForm.exp),
-      description: guideForm.desc || "Experienced guide trained in Leave No Trace rules."
+      description: guideForm.desc || "Experienced guide trained in Leave No Trace rules.",
+      // 🔥 CRITICAL FIX: ইমেজ image_eba4e1.png অনুযায়ী নতুন গাইডের ইনিশিয়াল ব্যাজ হবে "Unverified"
+      badge: "Unverified",
+      isVerified: false
     });
     setShowAddForm(false);
     setGuideForm({ ...guideForm, name: "", desc: "" });
@@ -496,21 +499,40 @@ export default function AdminPage({ onLogout }: AdminPageProps) {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="border-b border-gray-100 text-gray-400 font-bold uppercase font-mono"><th className="py-3 px-2">Naturalist Name</th><th className="py-3 px-2">Specialty</th><th className="py-3 px-2">Verification</th><th className="py-3 px-2 text-right">Actions</th></tr>
+                <tr className="border-b border-gray-100 text-gray-400 font-bold uppercase font-mono">
+                  <th className="py-3 px-2">Naturalist Name</th>
+                  <th className="py-3 px-2">Specialty</th>
+                  <th className="py-3 px-2">Verification Status</th>
+                  <th className="py-3 px-2 text-right">Actions</th>
+                </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {guides.map(g => (
-                  <tr key={g.id} className="hover:bg-emerald-50/10">
-                    <td className="py-3 px-2 font-bold text-emerald-950">{g.name}</td>
-                    <td className="py-3 px-2 text-gray-500">{g.category}</td>
-                    <td className="py-3 px-2">
-                      <button onClick={() => toggleGuideVerification(g.id)} className={`px-2 py-0.5 rounded text-[10px] font-bold ${g.isVerified ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-600'}`}>
-                        {g.isVerified ? '✓ Verified Verified' : 'Unverified'}
-                      </button>
-                    </td>
-                    <td className="py-3 px-2 text-right"><button onClick={() => deleteGuide(g.id)} className="p-1 text-gray-400 hover:text-rose-600 transition-colors"><Trash2 className="w-4 h-4" /></button></td>
-                  </tr>
-                ))}
+                {guides.map(g => {
+                  // 🔥 CRITICAL FIX: গাইড অবজেক্টের badge প্রোপার্টি দিয়ে লাইভ কন্ডিশন ভ্যালিডেশন
+                  const isVerifiedLive = g.badge !== "Unverified" && g.isVerified;
+                  
+                  return (
+                    <tr key={g.id} className="hover:bg-emerald-50/10">
+                      <td className="py-3 px-2 font-bold text-emerald-950">{g.name}</td>
+                      <td className="py-3 px-2 text-gray-500">{g.category}</td>
+                      <td className="py-3 px-2">
+                        <button 
+                          onClick={() => toggleGuideVerification(g.id)} 
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${
+                            isVerifiedLive ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                          }`}
+                        >
+                          {isVerifiedLive ? '✓ Verified' : 'Unverified'}
+                        </button>
+                      </td>
+                      <td className="py-3 px-2 text-right">
+                        <button onClick={() => deleteGuide(g.id)} className="p-1 text-gray-400 hover:text-rose-600 transition-colors">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -552,36 +574,46 @@ export default function AdminPage({ onLogout }: AdminPageProps) {
                 <input type="text" value={haorMetrics.policeAlert} onChange={e => setHaorMetrics({...haorMetrics, policeAlert: e.target.value})} className="w-full bg-white border border-emerald-100 p-2 rounded-xl focus:outline-none" />
               </div>
             </div>
-            <button type="submit" className="bg-emerald-950 text-white font-bold px-4 py-2 rounded-xl shadow hover:bg-emerald-900">Update Metrics</button>
+            <div className="flex justify-end">
+              <button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl shadow transition-colors">
+                Update Wetland Metrics
+              </button>
+            </div>
           </form>
         )}
 
         {activeSubTab === "settings" && (
-          <div className="grid md:grid-cols-2 gap-8 text-xs font-medium">
-            <form onSubmit={handleBkashSubmit} className="space-y-4 bg-emerald-50/20 border border-emerald-100 p-5 rounded-2xl">
-              <h4 className="font-bold text-sm text-emerald-950 flex items-center gap-1.5"><Sparkles className="w-4 h-4 text-emerald-600" /> Gateway Configurations</h4>
+          <div className="grid md:grid-cols-2 gap-8 max-w-4xl">
+            {/* Payment Configurations */}
+            <form onSubmit={handleBkashSubmit} className="space-y-4 text-xs font-medium bg-gray-50/50 border border-gray-100 p-5 rounded-2xl">
+              <h4 className="font-bold text-emerald-950 flex items-center gap-1.5 text-sm"><Sparkles className="w-4 h-4 text-amber-500" /> Gateway Configurations</h4>
               <div>
-                <label className="block text-gray-500 mb-1">bKash Merchant Account Number</label>
-                <input type="text" value={bkashNumber} onChange={e => setBkashNumber(e.target.value)} className="w-full bg-white border border-emerald-100 p-2 rounded-xl focus:outline-none" />
+                <label className="block text-gray-500 mb-1">bKash Account Number</label>
+                <input type="text" value={bkashNumber} onChange={e => setBkashNumber(e.target.value)} required className="w-full bg-white border border-gray-200 p-2.5 rounded-xl focus:outline-none" />
               </div>
               <div>
-                <label className="block text-gray-500 mb-1">Account Ownership Node</label>
-                <input type="text" value={bkashType} onChange={e => setBkashType(e.target.value)} className="w-full bg-white border border-emerald-100 p-2 rounded-xl focus:outline-none" />
+                <label className="block text-gray-500 mb-1">Account Service Layer Type</label>
+                <select value={bkashType} onChange={e => setBkashType(e.target.value)} className="w-full bg-white border border-gray-200 p-2.5 rounded-xl focus:outline-none">
+                  <option value="Merchant">Merchant Desk API</option>
+                  <option value="Personal">Personal Counter Cash-In</option>
+                  <option value="Agent">Agent Distributed Node</option>
+                </select>
               </div>
-              <button type="submit" className="bg-emerald-600 text-white font-bold px-4 py-2 rounded-xl shadow hover:bg-emerald-700">Save Gateway</button>
+              <button type="submit" className="bg-emerald-950 text-white px-4 py-2 rounded-xl font-bold hover:bg-emerald-900 transition-colors">Save Gateway Numbers</button>
             </form>
 
-            <form onSubmit={handlePasswordSubmit} className="space-y-4 bg-purple-50/20 border border-purple-100 p-5 rounded-2xl">
-              <h4 className="font-bold text-sm text-purple-950 flex items-center gap-1.5"><Lock className="w-4 h-4 text-purple-600" /> Update Security Credentials</h4>
+            {/* Access Password Change */}
+            <form onSubmit={handlePasswordSubmit} className="space-y-4 text-xs font-medium bg-gray-50/50 border border-gray-100 p-5 rounded-2xl">
+              <h4 className="font-bold text-emerald-950 flex items-center gap-1.5 text-sm"><Lock className="w-4 h-4 text-purple-600" /> Terminal Security Credentials</h4>
               <div>
-                <label className="block text-gray-500 mb-1">Current Session Password</label>
-                <input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} required className="w-full bg-white border border-purple-100 p-2 rounded-xl focus:outline-none" />
+                <label className="block text-gray-500 mb-1">Current Master Password</label>
+                <input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} required className="w-full bg-white border border-gray-200 p-2.5 rounded-xl focus:outline-none" />
               </div>
               <div>
-                <label className="block text-gray-500 mb-1">New Administrative Password</label>
-                <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required className="w-full bg-white border border-purple-100 p-2 rounded-xl focus:outline-none" />
+                <label className="block text-gray-500 mb-1">New System Encryption Password</label>
+                <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required className="w-full bg-white border border-gray-200 p-2.5 rounded-xl focus:outline-none" />
               </div>
-              <button type="submit" className="bg-purple-600 text-white font-bold px-4 py-2 rounded-xl shadow hover:bg-purple-700">Save Password</button>
+              <button type="submit" className="bg-purple-600 text-white px-4 py-2 rounded-xl font-bold hover:bg-purple-700 transition-colors">Rotate Auth Tokens</button>
             </form>
           </div>
         )}
