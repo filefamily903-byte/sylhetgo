@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useDB } from "../DBContext";
 import { LocalGuide } from "../types";
-import { Star, ShieldCheck, MapPin, BadgeCheck, Phone, Mail, Award, Check } from "lucide-react";
+import { Star, ShieldCheck, MapPin, BadgeCheck, Phone, Mail, Award, Check, Users } from "lucide-react";
 import PaymentGateway from "./PaymentGateway";
 
 export default function GuidesPage() {
@@ -187,6 +187,47 @@ export default function GuidesPage() {
           ))}
         </div>
       )}
+
+      {/* ========================================== */}
+      {/* NEW BRANDED CTA BANNER FROM edited-image.png */}
+      {/* ========================================== */}
+      <div className="w-full bg-[#022c22] text-white rounded-[2rem] p-8 md:p-14 my-14 relative overflow-hidden shadow-2xl text-left border border-emerald-900">
+        {/* Glow effect overlay */}
+        <div className="absolute -right-10 -bottom-10 w-80 h-80 bg-emerald-800/20 rounded-full blur-3xl pointer-events-none"></div>
+        
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8 relative z-10">
+          
+          {/* Left Side: Content & Button */}
+          <div className="space-y-4 max-w-xl">
+            <h2 className="font-display font-extrabold text-3xl md:text-4xl text-white tracking-tight">
+              Are you a local expert?
+            </h2>
+            <p className="text-emerald-100/70 text-sm md:text-base font-normal leading-relaxed">
+              Join the SylhetGo community and share your passion for our beautiful land with travelers from all over the world.
+            </p>
+            <div className="pt-3">
+              <button className="bg-[#922b16] hover:bg-[#7a2210] text-white font-bold text-sm px-7 py-3.5 rounded-xl transition-all shadow-lg active:scale-95 cursor-pointer">
+                Become a Guide
+              </button>
+            </div>
+          </div>
+
+          {/* Right Side: Badge Component */}
+          <div className="w-full md:w-auto min-w-[260px] bg-emerald-900/20 border border-emerald-800/40 backdrop-blur-md rounded-2xl p-6 flex flex-col items-center text-center space-y-3">
+            <div className="p-3 bg-emerald-800/40 rounded-xl text-emerald-400">
+              <Users className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="font-mono font-black text-2xl text-white">50+</div>
+              <p className="text-[11px] text-emerald-200/60 font-medium leading-normal max-w-[180px]">
+                Verified guides across the Sylhet Division
+              </p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      {/* ========================================== */}
 
       {/* Guide Booking Modal */}
       {selectedGuide && (
