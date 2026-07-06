@@ -1,0 +1,6 @@
+{
+  "name": "SylhetGo",
+  "description": "A premium eco-tourism platform for Sylhet, Bangladesh, showcasing stays, transport, local guides, seasonal haor trackers, dining, and community boards.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
