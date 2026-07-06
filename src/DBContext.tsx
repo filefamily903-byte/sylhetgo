@@ -1,67 +1,40 @@
-import React, { useState } from "react";
-import { useDB } from "../DBContext";
-import { LocalGuide } from "../types";
-import { Star, MapPin, BadgeCheck, Award, Users, X } from "lucide-react";
-import PaymentGateway from "./PaymentGateway";
+// ========================================================
+// ১. addGuide ফাংশন (নতুন গাইড যুক্ত করার টাইপ সেফ লজিক)
+// ========================================================
+const addGuide = (newGuideData: Omit<LocalGuide, 'id' | 'rating' | 'available'>) => {
+  setGuides((prevGuides) => {
+    const freshGuide: LocalGuide = {
+      ...newGuideData,
+      id: `guide-${Date.now()}`,               // ইউনিক আইডি জেনারেট
+      rating: 5.0,                              // নতুন গাইডের জন্য ডিফল্ট রেটিং
+      available: true,                          // নতুন রেজিস্টার্ড গাইড ডিফল্টভাবে এভেইলবল থাকবে
+      isVerified: false,                        // শুরুতে আন-ভেরিফাইড থাকবে (Admin Approval লাগবে)
+      badge: "Unverified",                      // ডিফল্ট ব্যাজ "Unverified" সেট হবে
+    };
 
-export default function GuidesPage() {
-  const { guides, addBooking, addGuide } = useDB(); 
-  const [searchTerm, setSearchTerm] = useState("");
-
-  // Booking guides state
-  const [selectedGuide, setSelectedGuide] = useState<LocalGuide | null>(null);
-  const [tourDate, setTourDate] = useState("");
-  const [bookingCompleted, setBookingCompleted] = useState(false);
-  const [showPaymentGateway, setShowPaymentGateway] = useState(false);
-
-  // Become a Guide Form State
-  const [showBecomeGuideModal, setShowBecomeGuideModal] = useState(false);
-  const [newGuideData, setNewGuideData] = useState({
-    name: "",
-    category: "Naturalist Guide",
-    location: "",
-    price: 1500,
-    languages: "",
-    description: "",
-    image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80"
+    return [...prevGuides, freshGuide];
   });
-  const [formSubmitted, setFormSubmitted] = useState(false);
+};
 
-  // 🔥 একদম নিখুঁত ফিল্টার: যে সব গাইডের ব্যাজ "Verified Local Guide" অথবা "SREDA Certified" (ডেমো ডাটা), শুধু তাদেরই দেখাবে।
-  // নতুনরা ফর্ম সাবমিট করলে তাদের ব্যাজ থাকে "Eco Guide", তাই তারা রিভিউ বা ভেরিফাইড হওয়ার আগে এখানে শো করবে না!
-  const filteredGuides = guides.filter(guide => {
-    const isVerified = guide.badge === "Verified Local Guide" || guide.badge === "SREDA Certified";
-    
-    const matchesSearch = guide.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          guide.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          guide.location.toLowerCase().includes(searchTerm.toLowerCase());
-    return isVerified && matchesSearch;
-  });
-
-  const handleGuideBookInitiate = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!tourDate || !selectedGuide) return;
-    setShowPaymentGateway(true);
-  };
-
-  const handlePaymentSuccess = (paymentInfo: {
-    customerName: string;
-    customerPhone: string;
-    customerEmail: string;
-    paymentMethod: "bKash" | "Nagad" | "SSLCommerz/Card";
-    transactionId: string;
-    guestCount: number;
-    specialNotes: string;
-  }) => {
-    addBooking({
-      serviceType: "Guide",
-      itemName: selectedGuide!.name,
-      userDates: `${tourDate} (Day tour)`,
-      userBudget: selectedGuide!.price,
-      customerName: paymentInfo.customerName,
-      customerPhone: paymentInfo.customerPhone,
-      customerEmail: paymentInfo.customerEmail,
-      paymentStatus: "Paid/Verifying",
+// ========================================================
+// ২. toggleGuideVerification ফাংশন (Admin Approval লজিক)
+// ========================================================
+const toggleGuideVerification = (id: string) => {
+  setGuides((prevGuides) =>
+    prevGuides.map((guide) => {
+      if (guide.id === id) {
+        const nextVerifiedState = !guide.isVerified;
+        return {
+          ...guide,
+          isVerified: nextVerifiedState,
+          // 🔥 এপ্রুভ হলে "Eco Guide" ব্যাজ পাবে, রিভোক বা আন-ভেরিফাই করলে আবার "Unverified" হবে
+          badge: nextVerifiedState ? "Eco Guide" : "Unverified",
+        };
+      }
+      return guide;
+    })
+  );
+};      paymentStatus: "Paid/Verifying",
       paymentMethod: paymentInfo.paymentMethod,
       transactionId: paymentInfo.transactionId,
       guestCount: paymentInfo.guestCount,
