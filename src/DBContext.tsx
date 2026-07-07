@@ -1,85 +1,104 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
-import { 
-  EcoStay, 
-  TransportRide, 
-  LocalGuide, 
-  EcoAttraction, 
-  DiningSpot, 
-  HaorMetric, 
-  EmergencyAlert, 
-  CommunityPost, 
-  EcoBooking,
-  MockDatabase 
-} from "./types";
+import React, { createContext, useContext, useState } from "react";
+import { MockDatabase, EcoStay, TransportRide, LocalGuide, EcoAttraction, DiningSpot, HaorMetric, EmergencyAlert, CommunityPost, EcoBooking } from "./types";
+import { getDatabase, saveDatabase } from "./db";
 
-// ==========================================
-// 1. Initial Mock Data (প্রাথমিক ডেমো ডাটা)
-// ==========================================
-
-const initialStays: EcoStay[] = [
-  {
-    id: "stay-1",
-    title: "Tanguar Haor Eco Resort",
-    category: "Eco Resort",
-    location: "Sunamganj",
-    price: 3500,
-    rating: 4.8,
-    badge: "Top Rated",
-    image: "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=600&q=80",
-    description: "An eco-friendly resort built with local materials overlooking the serene Tanguar Haor.",
-    features: ["Solar Power", "Rainwater Harvesting", "Local Organic Food"],
-    ecoScore: 95,
-    available: true
-  }
-];
-
-const initialGuides: LocalGuide[] = [
-  {
-    id: "guide-1",
-    name: "Abdur Rahman",
-    category: "Wildlife & Swamp Specialist",
-    location: "Sunamganj / Ratargul",
-    price: 2000,
-    rating: 4.9,
-    badge: "Verified Local Guide",
-    image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80",
-    languages: ["Bangla", "English", "Sylheti"],
-    experienceYears: 5,
-    description: "Expert in local biodiversity, bird watching, and boat navigation in swamp forests.",
-    available: true,
-    isVerified: true
+// Fallback initial database in case local db helper can't resolve
+const INITIAL_DB_FALLBACK: MockDatabase = {
+  stays: [
+    {
+      id: "stay-1",
+      title: "Novomera Eco-Resort & Spa",
+      category: "Premium Eco Lodge",
+      location: "Sreemangal",
+      price: 8500,
+      rating: 4.9,
+      badge: "Plastic-Free Certified",
+      image: "https://images.unsplash.com/photo-1546548970-71785318a17b?auto=format&fit=crop&w=600&q=80",
+      description: "Nestled in the lush hills of Sreemangal, this resort features eco-lodges constructed from sustainable bamboo and local timber. Employs 100% solar heating and organic farming.",
+      features: ["Solar Powered Hot Water", "Organic Organic Tea Garden Tours", "On-site Wetland Reservoir", "Complimentary Bicycle Hire"],
+      ecoScore: 98,
+      available: true
+    },
+    {
+      id: "stay-2",
+      title: "The Palace Luxury Resort",
+      category: "Premium Resort",
+      location: "Bahubal",
+      price: 14000,
+      rating: 4.8,
+      badge: "Wildlife Friendly",
+      image: "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=600&q=80",
+      description: "A gorgeous luxury estate surrounded by green tea slopes. Features modern luxury combined with strict local wildlife protection practices and Zero-Waste kitchens.",
+      features: ["5-star Eco Luxury", "Protected Bird Forest Canopy", "Zero Single-use Plastic", "Electric Buggy Shuttles"],
+      ecoScore: 94,
+      available: true
+    }
+  ],
+  transport: [
+    {
+      id: "trans-1",
+      title: "SylhetGreen Electric SUV",
+      category: "Chauffeur Drive",
+      location: "Sreemangal",
+      price: 4500,
+      rating: 4.9,
+      badge: "Zero-Emission",
+      image: "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=600&q=80",
+      description: "Premium silent electric vehicle suited for rough tea garden paths and highway commutes from Sylhet Osmani Airport. Comes with a professional naturalist driver.",
+      fuelType: "Electric",
+      capacity: 5,
+      available: true
+    }
+  ],
+  guides: [
+    {
+      id: "guide-1",
+      name: "Sufian Ahmed",
+      category: "Swamp Forest & Wildlife Specialist",
+      location: "Ratargul",
+      price: 2500,
+      rating: 5.0,
+      badge: "SREDA Certified",
+      image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80",
+      languages: ["Bengali", "English", "Sylheti"],
+      experienceYears: 8,
+      description: "Grown up on the edges of Ratargul, Sufian has registered over 140 species of native birds and has extensive knowledge of reptile behavior in flooded environments.",
+      available: true
+    }
+  ],
+  attractions: [
+    {
+      id: "attr-1",
+      title: "Ratargul Swamp Forest",
+      category: "Freshwater Swamp Forest",
+      location: "Ratargul",
+      rating: 4.8,
+      badge: "Must Visit",
+      image: "https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=600&q=80",
+      description: "The only freshwater swamp forest in Bangladesh and one of the few in the world. Trees like Koroch and Hijol remain submerged in up to 15 feet of water in peak monsoon.",
+      crowdLevel: "Moderate",
+      mudIndex: "Very Muddy",
+      bestSeason: "Monsoon (June to September)",
+      conservationStatus: "Protected Wildlife Sanctuary"
+    }
+  ],
+  dining: [],
+  haor: {
+    waterHeight: 12.4,
+    monsoonWaterHeight: 12.4,
+    winterWaterHeight: 1.8,
+    currentStatus: "Monsoon Deep Water",
+    policeAlert: "Lifevest mandates are actively in effect for all wooden houseboats. Night anchoring outside authorized stations is prohibited due to seasonal squalls.",
+    safetyIndex: 94,
+    boatRateRegulation: "Official Rate BDT 1,200/hr for country boats, BDT 12,000/24hrs for mid-size double decker houseboats."
   },
-  {
-    id: "guide-2",
-    name: "Suresh Das",
-    category: "Eco-Trail Specialist",
-    location: "Sreemangal",
-    price: 1800,
-    rating: 4.7,
-    badge: "SREDA Certified",
-    image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80",
-    languages: ["Bangla", "Sylheti"],
-    experienceYears: 4,
-    description: "Specialized in rainforest tracking and local tea culture tours.",
-    available: true,
-    isVerified: true
-  }
-];
-
-const initialHaor: HaorMetric = {
-  waterHeight: 8.5,
-  monsoonWaterHeight: 12.4,
-  winterWaterHeight: 1.8,
-  currentStatus: "Monsoon Deep Water",
-  policeAlert: "Normal conditions. Wearing life vests is mandatory for all boat trips.",
-  safetyIndex: 92,
-  boatRateRegulation: "Standard government rates active (৳৩০০০-৳৫০০০ per day based on boat size)."
+  alerts: [],
+  posts: [],
+  bookings: []
 };
 
-// ==========================================
-// 2. Context Interface Definition
-// ==========================================
 interface DBContextType {
+  db: MockDatabase;
   stays: EcoStay[];
   transport: TransportRide[];
   guides: LocalGuide[];
@@ -90,87 +109,459 @@ interface DBContextType {
   posts: CommunityPost[];
   bookings: EcoBooking[];
   
-  // Actions
-  addBooking: (booking: Omit<EcoBooking, 'status' | 'timestamp'> & { id?: string; status?: "Pending" | "Approved" | "Rejected"; timestamp?: string }) => void;
-  updateBookingStatus: (id: string, status: "Pending" | "Approved" | "Rejected" | "Verified") => void;
-  addGuide: (newGuideData: Omit<LocalGuide, 'id' | 'rating' | 'available' | 'isVerified' | 'badge'>) => void;
+  addStay: (stay: Omit<EcoStay, "id" | "rating" | "ecoScore" | "available">) => void;
+  updateStay: (id: string, updated: Partial<EcoStay>) => void;
+  deleteStay: (id: string) => void;
+  
+  addTransport: (ride: Omit<TransportRide, "id" | "rating" | "available" | "badge">) => void;
+  updateTransport: (id: string, updated: Partial<TransportRide>) => void;
+  deleteTransport: (id: string) => void;
+  
+  addGuide: (guide: Omit<LocalGuide, "id" | "rating" | "available" | "badge">) => void;
+  updateGuide: (id: string, updated: Partial<LocalGuide>) => void;
+  deleteGuide: (id: string) => void;
   toggleGuideVerification: (id: string) => void;
+  
+  addAttraction: (attraction: Omit<EcoAttraction, "id" | "rating">) => void;
+  updateAttraction: (id: string, updated: Partial<EcoAttraction>) => void;
+  deleteAttraction: (id: string) => void;
+  
+  updateHaor: (updated: Partial<HaorMetric>) => void;
+  resetDatabase: () => void;
+
+  addAlert: (alert: Omit<EmergencyAlert, "id">) => void;
+  deleteAlert: (id: string) => void;
+  
+  addPost: (post: Omit<CommunityPost, "id" | "likes" | "commentsCount" | "timestamp">) => void;
+  deletePost: (id: string) => void;
+  likePost: (id: string) => void;
+  updatePost: (id: string, updated: Partial<CommunityPost>) => void;
+
+  addBooking: (booking: Omit<EcoBooking, "id" | "status" | "timestamp">) => void;
+  updateBookingStatus: (id: string, status: "Pending" | "Approved" | "Rejected", paymentStatus?: "Unpaid" | "Paid/Verifying" | "Verified") => void;
+  deleteBooking: (id: string) => void;
 }
 
 const DBContext = createContext<DBContextType | undefined>(undefined);
 
-// ==========================================
-// 3. DBContext Provider Component
-// ==========================================
-export const DBProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  
-  // State Initialization with Safe LocalStorage parsing
-  const [stays, setStays] = useState<EcoStay[]>(() => {
-    const local = localStorage.getItem("eco_stays");
-    return local ? JSON.parse(local) : initialStays;
+export function DBProvider({ children }: { children: React.ReactNode }) {
+  const [db, setDb] = useState<MockDatabase>(() => {
+    let initialDb: MockDatabase;
+    try {
+      initialDb = getDatabase();
+    } catch (e) {
+      console.error("Error loading initial DB, using fallback", e);
+      initialDb = { ...INITIAL_DB_FALLBACK };
+    }
+
+    // 1. Stays Synchronization
+    const localStays = localStorage.getItem("sylhetgo_stays");
+    if (localStays) {
+      try {
+        initialDb.stays = JSON.parse(localStays);
+      } catch (e) {
+        console.error("Error parsing local stays", e);
+      }
+    } else {
+      localStorage.setItem("sylhetgo_stays", JSON.stringify(initialDb.stays));
+    }
+
+    // 2. Guides Synchronization
+    const localGuides = localStorage.getItem("sylhetgo_guides");
+    if (localGuides) {
+      try {
+        initialDb.guides = JSON.parse(localGuides);
+      } catch (e) {
+        console.error("Error parsing local guides", e);
+      }
+    } else {
+      localStorage.setItem("sylhetgo_guides", JSON.stringify(initialDb.guides));
+    }
+
+    // 3. Bookings Synchronization
+    const localBookings = localStorage.getItem("sylhetgo_bookings");
+    if (localBookings) {
+      try {
+        initialDb.bookings = JSON.parse(localBookings);
+      } catch (e) {
+        console.error("Error parsing local bookings", e);
+      }
+    } else {
+      localStorage.setItem("sylhetgo_bookings", JSON.stringify(initialDb.bookings || []));
+    }
+
+    // Save back to general db
+    try {
+      saveDatabase(initialDb);
+    } catch (e) {
+      console.error(e);
+    }
+
+    return initialDb;
   });
 
-  const [guides, setGuides] = useState<LocalGuide[]>(() => {
-    const local = localStorage.getItem("eco_guides");
-    return local ? JSON.parse(local) : initialGuides;
-  });
-
-  const [bookings, setBookings] = useState<EcoBooking[]>(() => {
-    const local = localStorage.getItem("eco_bookings");
-    return local ? JSON.parse(local) : [];
-  });
-
-  const [transport] = useState<TransportRide[]>([]);
-  const [attractions] = useState<EcoAttraction[]>([]);
-  const [dining] = useState<DiningSpot[]>([]);
-  const [alerts] = useState<EmergencyAlert[]>([]);
-  const [posts] = useState<CommunityPost[]>([]);
-  const [haor] = useState<HaorMetric>(initialHaor);
-
-  // ==========================================
-  // 4. Glitch-Free LocalStorage Sync Effects
-  // ==========================================
-  useEffect(() => {
-    localStorage.setItem("eco_stays", JSON.stringify(stays));
-  }, [stays]);
-
-  useEffect(() => {
-    localStorage.setItem("eco_guides", JSON.stringify(guides));
-  }, [guides]);
-
-  useEffect(() => {
-    localStorage.setItem("eco_bookings", JSON.stringify(bookings));
-  }, [bookings]);
-
-
-  // ==========================================
-  // 5. Database Actions (ফাংশনসমূহ)
-  // ==========================================
-  
-  // বুকিং যুক্ত করার লজিক
-  const addBooking = (bookingData: any) => {
-    const newBooking: EcoBooking = {
-      ...bookingData,
-      id: bookingData.id || `book-${Date.now()}`,
-      status: bookingData.status || "Pending",
-      timestamp: bookingData.timestamp || new Date().toISOString(),
+  // Event listener to sync updates across tabs/windows (e.g., from separate admin panel)
+  React.useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "sylhetgo_stays") {
+        try {
+          const parsed = e.newValue ? JSON.parse(e.newValue) : [];
+          setDb(prev => {
+            const next = { ...prev, stays: parsed };
+            saveDatabase(next);
+            return next;
+          });
+        } catch (err) {
+          console.error("Failed to parse stays from storage", err);
+        }
+      } else if (e.key === "sylhetgo_guides") {
+        try {
+          const parsed = e.newValue ? JSON.parse(e.newValue) : [];
+          setDb(prev => {
+            const next = { ...prev, guides: parsed };
+            saveDatabase(next);
+            return next;
+          });
+        } catch (err) {
+          console.error("Failed to parse guides from storage", err);
+        }
+      } else if (e.key === "sylhetgo_bookings") {
+        try {
+          const parsed = e.newValue ? JSON.parse(e.newValue) : [];
+          setDb(prev => {
+            const next = { ...prev, bookings: parsed };
+            saveDatabase(next);
+            return next;
+          });
+        } catch (err) {
+          console.error("Failed to parse bookings from storage", err);
+        }
+      }
     };
-    setBookings((prev) => [newBooking, ...prev]);
+    window.addEventListener("storage", handleStorageChange);
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+    };
+  }, []);
+
+  const updateAndSave = (updater: (prev: MockDatabase) => MockDatabase) => {
+    setDb((prev) => {
+      const next = updater(prev);
+      try {
+        saveDatabase(next);
+        // Write to separate individual keys for cross-project sync!
+        localStorage.setItem("sylhetgo_stays", JSON.stringify(next.stays));
+        localStorage.setItem("sylhetgo_guides", JSON.stringify(next.guides));
+        localStorage.setItem("sylhetgo_bookings", JSON.stringify(next.bookings || []));
+      } catch (e) {
+        console.error("Failed to save database to localStorage", e);
+      }
+      return next;
+    });
   };
 
-  // বুকিং স্ট্যাটাস আপডেট লজিক
-  const updateBookingStatus = (id: string, status: any) => {
-    setBookings((prevBookings) =>
-      prevBookings.map((b) => (b.id === id ? { ...b, status: status === "Verified" ? "Approved" : status, paymentStatus: status === "Verified" ? "Verified" : b.paymentStatus } : b))
-    );
+  // Stays CRUD
+  const addStay = (stay: Omit<EcoStay, "id" | "rating" | "ecoScore" | "available">) => {
+    updateAndSave((prev) => {
+      const newStay: EcoStay = {
+        ...stay,
+        id: `stay-${Date.now()}`,
+        rating: 4.8,
+        ecoScore: 96,
+        available: true
+      };
+      return {
+        ...prev,
+        stays: [...prev.stays, newStay]
+      };
+    });
   };
 
-  // নতুন গাইড যুক্ত করার নিখুঁত লজিক
-  const addGuide = (newGuideData: Omit<LocalGuide, 'id' | 'rating' | 'available' | 'isVerified' | 'badge'>) => {
-    setGuides((prevGuides) => {
-      const freshGuide: LocalGuide = {
-        ...newGuideData,
-        id: `guide-${Date.now()}`,               
-        rating: 5.0,                              
-        available: true,                          
-        isVerified: false,                        // শুরুতে Admin Panel-এ Review
+  const updateStay = (id: string, updated: Partial<EcoStay>) => {
+    updateAndSave((prev) => ({
+      ...prev,
+      stays: prev.stays.map((s) => (s.id === id ? { ...s, ...updated } : s))
+    }));
+  };
+
+  const deleteStay = (id: string) => {
+    updateAndSave((prev) => ({
+      ...prev,
+      stays: prev.stays.filter((s) => s.id !== id)
+    }));
+  };
+
+  // Transport CRUD
+  const addTransport = (ride: Omit<TransportRide, "id" | "rating" | "available" | "badge">) => {
+    updateAndSave((prev) => {
+      const newRide: TransportRide = {
+        ...ride,
+        id: `trans-${Date.now()}`,
+        rating: 4.8,
+        badge: "Eco Vetted",
+        available: true
+      };
+      return {
+        ...prev,
+        transport: [...prev.transport, newRide]
+      };
+    });
+  };
+
+  const updateTransport = (id: string, updated: Partial<TransportRide>) => {
+    updateAndSave((prev) => ({
+      ...prev,
+      transport: prev.transport.map((r) => (r.id === id ? { ...r, ...updated } : r))
+    }));
+  };
+
+  const deleteTransport = (id: string) => {
+    updateAndSave((prev) => ({
+      ...prev,
+      transport: prev.transport.filter((r) => r.id !== id)
+    }));
+  };
+
+  // Guides CRUD
+  const addGuide = (guide: Omit<LocalGuide, "id" | "rating" | "available" | "badge">) => {
+    updateAndSave((prev) => {
+      const newGuide: LocalGuide = {
+        ...guide,
+        id: `guide-${Date.now()}`,
+        rating: 5.0,
+        badge: "Eco Guide",
+        available: true
+      };
+      return {
+        ...prev,
+        guides: [...prev.guides, newGuide]
+      };
+    });
+  };
+
+  const updateGuide = (id: string, updated: Partial<LocalGuide>) => {
+    updateAndSave((prev) => ({
+      ...prev,
+      guides: prev.guides.map((g) => (g.id === id ? { ...g, ...updated } : g))
+    }));
+  };
+
+  const deleteGuide = (id: string) => {
+    updateAndSave((prev) => ({
+      ...prev,
+      guides: prev.guides.filter((g) => g.id !== id)
+    }));
+  };
+
+  const toggleGuideVerification = (id: string) => {
+    updateAndSave((prev) => ({
+      ...prev,
+      guides: prev.guides.map((g) => {
+        if (g.id === id) {
+          const isVerified = g.badge === "Verified Local Guide";
+          return {
+            ...g,
+            badge: isVerified ? "Eco Guide" : "Verified Local Guide"
+          };
+        }
+        return g;
+      })
+    }));
+  };
+
+  // Attractions CRUD
+  const addAttraction = (attraction: Omit<EcoAttraction, "id" | "rating">) => {
+    updateAndSave((prev) => {
+      const newAttr: EcoAttraction = {
+        ...attraction,
+        id: `attr-${Date.now()}`,
+        rating: 4.8
+      };
+      return {
+        ...prev,
+        attractions: [...prev.attractions, newAttr]
+      };
+    });
+  };
+
+  const updateAttraction = (id: string, updated: Partial<EcoAttraction>) => {
+    updateAndSave((prev) => ({
+      ...prev,
+      attractions: prev.attractions.map((a) => (a.id === id ? { ...a, ...updated } : a))
+    }));
+  };
+
+  const deleteAttraction = (id: string) => {
+    updateAndSave((prev) => ({
+      ...prev,
+      attractions: prev.attractions.filter((a) => a.id !== id)
+    }));
+  };
+
+  // Haor Metrics
+  const updateHaor = (updated: Partial<HaorMetric>) => {
+    updateAndSave((prev) => ({
+      ...prev,
+      haor: { ...prev.haor, ...updated }
+    }));
+  };
+
+  // Reset database helper
+  const resetDatabase = () => {
+    localStorage.removeItem("sylhetgo_local_db");
+    const freshDb = getDatabase();
+    setDb(freshDb);
+  };
+
+  // Alerts CRUD
+  const addAlert = (alert: Omit<EmergencyAlert, "id">) => {
+    updateAndSave((prev) => {
+      const newAlert: EmergencyAlert = {
+        ...alert,
+        id: `alert-${Date.now()}`
+      };
+      return {
+        ...prev,
+        alerts: [newAlert, ...prev.alerts]
+      };
+    });
+  };
+
+  const deleteAlert = (id: string) => {
+    updateAndSave((prev) => ({
+      ...prev,
+      alerts: prev.alerts.filter((a) => a.id !== id)
+    }));
+  };
+
+  // Posts CRUD
+  const addPost = (post: Omit<CommunityPost, "id" | "likes" | "commentsCount" | "timestamp">) => {
+    updateAndSave((prev) => {
+      const newPost: CommunityPost = {
+        ...post,
+        id: `post-${Date.now()}`,
+        likes: 0,
+        commentsCount: 0,
+        timestamp: "Just Now"
+      };
+      return {
+        ...prev,
+        posts: [newPost, ...prev.posts]
+      };
+    });
+  };
+
+  const deletePost = (id: string) => {
+    updateAndSave((prev) => ({
+      ...prev,
+      posts: prev.posts.filter((p) => p.id !== id)
+    }));
+  };
+
+  const likePost = (id: string) => {
+    updateAndSave((prev) => ({
+      ...prev,
+      posts: prev.posts.map((p) => (p.id === id ? { ...p, likes: p.likes + 1 } : p))
+    }));
+  };
+
+  const updatePost = (id: string, updated: Partial<CommunityPost>) => {
+    updateAndSave((prev) => ({
+      ...prev,
+      posts: prev.posts.map((p) => (p.id === id ? { ...p, ...updated } : p))
+    }));
+  };
+
+  // Bookings CRUD
+  const addBooking = (booking: Omit<EcoBooking, "id" | "status" | "timestamp">) => {
+    updateAndSave((prev) => {
+      const newBooking: EcoBooking = {
+        ...booking,
+        id: `book-${Date.now()}`,
+        status: "Pending",
+        timestamp: new Date().toLocaleString()
+      };
+      return {
+        ...prev,
+        bookings: [newBooking, ...(prev.bookings || [])]
+      };
+    });
+  };
+
+  const updateBookingStatus = (id: string, status: "Pending" | "Approved" | "Rejected", paymentStatus?: "Unpaid" | "Paid/Verifying" | "Verified") => {
+    updateAndSave((prev) => ({
+      ...prev,
+      bookings: (prev.bookings || []).map((b) => (b.id === id ? { 
+        ...b, 
+        status, 
+        paymentStatus: paymentStatus || (status === "Approved" ? "Verified" : b.paymentStatus) 
+      } : b))
+    }));
+  };
+
+  const deleteBooking = (id: string) => {
+    updateAndSave((prev) => ({
+      ...prev,
+      bookings: (prev.bookings || []).filter((b) => b.id !== id)
+    }));
+  };
+
+  return (
+    <DBContext.Provider
+      value={{
+        db,
+        stays: db.stays,
+        transport: db.transport,
+        guides: db.guides,
+        attractions: db.attractions,
+        dining: db.dining,
+        haor: db.haor,
+        alerts: db.alerts,
+        posts: db.posts,
+        bookings: db.bookings || [],
+        
+        addStay,
+        updateStay,
+        deleteStay,
+        
+        addTransport,
+        updateTransport,
+        deleteTransport,
+        
+        addGuide,
+        updateGuide,
+        deleteGuide,
+        toggleGuideVerification,
+        
+        addAttraction,
+        updateAttraction,
+        deleteAttraction,
+        
+        updateHaor,
+        resetDatabase,
+
+        addAlert,
+        deleteAlert,
+        
+        addPost,
+        deletePost,
+        likePost,
+        updatePost,
+
+        addBooking,
+        updateBookingStatus,
+        deleteBooking
+      }}
+    >
+      {children}
+    </DBContext.Provider>
+  );
+}
+
+export function useDB() {
+  const context = useContext(DBContext);
+  if (context === undefined) {
+    throw new Error("useDB must be used within a DBProvider");
+  }
+  return context;
+}
