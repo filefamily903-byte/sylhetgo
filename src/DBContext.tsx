@@ -148,11 +148,21 @@ export function DBProvider({ children }: { children: React.ReactNode }) {
   const [db, setDb] = useState<MockDatabase>(() => {
     let initialDb: MockDatabase;
     try {
-      initialDb = getDatabase();
+      initialDb = JSON.parse(JSON.stringify(getDatabase()));
     } catch (e) {
       console.error("Error loading initial DB, using fallback", e);
-      initialDb = { ...INITIAL_DB_FALLBACK };
+      initialDb = JSON.parse(JSON.stringify(INITIAL_DB_FALLBACK));
     }
+
+    // Ensure all array fields are defensively initialized to empty arrays if missing
+    if (!initialDb.stays) initialDb.stays = [];
+    if (!initialDb.transport) initialDb.transport = [];
+    if (!initialDb.guides) initialDb.guides = [];
+    if (!initialDb.attractions) initialDb.attractions = [];
+    if (!initialDb.dining) initialDb.dining = [];
+    if (!initialDb.alerts) initialDb.alerts = [];
+    if (!initialDb.posts) initialDb.posts = [];
+    if (!initialDb.bookings) initialDb.bookings = [];
 
     // 1. Stays Synchronization
     const localStays = localStorage.getItem("sylhetgo_stays");
@@ -187,7 +197,7 @@ export function DBProvider({ children }: { children: React.ReactNode }) {
         console.error("Error parsing local bookings", e);
       }
     } else {
-      localStorage.setItem("sylhetgo_bookings", JSON.stringify(initialDb.bookings || []));
+      localStorage.setItem("sylhetgo_bookings", JSON.stringify(initialDb.bookings));
     }
 
     // 4. Alerts Synchronization
@@ -199,7 +209,7 @@ export function DBProvider({ children }: { children: React.ReactNode }) {
         console.error("Error parsing local alerts", e);
       }
     } else {
-      localStorage.setItem("sylhetgo_alerts", JSON.stringify(initialDb.alerts || []));
+      localStorage.setItem("sylhetgo_alerts", JSON.stringify(initialDb.alerts));
     }
 
     // 5. Posts Synchronization
@@ -211,7 +221,7 @@ export function DBProvider({ children }: { children: React.ReactNode }) {
         console.error("Error parsing local posts", e);
       }
     } else {
-      localStorage.setItem("sylhetgo_posts", JSON.stringify(initialDb.posts || []));
+      localStorage.setItem("sylhetgo_posts", JSON.stringify(initialDb.posts));
     }
 
     // 6. Attractions Synchronization
@@ -223,7 +233,7 @@ export function DBProvider({ children }: { children: React.ReactNode }) {
         console.error("Error parsing local attractions", e);
       }
     } else {
-      localStorage.setItem("sylhetgo_attractions", JSON.stringify(initialDb.attractions || []));
+      localStorage.setItem("sylhetgo_attractions", JSON.stringify(initialDb.attractions));
     }
 
     // Save back to general db
@@ -305,6 +315,15 @@ export function DBProvider({ children }: { children: React.ReactNode }) {
         } catch (err) {
           console.error("Failed to parse attractions from storage", err);
         }
+      } else if (e.key === "sylhetgo_local_db") {
+        try {
+          const parsed = e.newValue ? JSON.parse(e.newValue) : null;
+          if (parsed) {
+            setDb(parsed);
+          }
+        } catch (err) {
+          console.error("Failed to parse local db from storage", err);
+        }
       }
     };
     window.addEventListener("storage", handleStorageChange);
@@ -315,12 +334,15 @@ export function DBProvider({ children }: { children: React.ReactNode }) {
 
   const updateAndSave = (updater: (prev: MockDatabase) => MockDatabase) => {
     setDb((prev) => {
-      const next = updater(prev);
+      // Create a complete deep copy of the previous state to fully sever object reference identity.
+      // This forces React to detect nested changes and trigger updates to destructured context bindings.
+      const clonedPrev = JSON.parse(JSON.stringify(prev));
+      const next = updater(clonedPrev);
       try {
         saveDatabase(next);
         // Write to separate individual keys for cross-project sync!
-        localStorage.setItem("sylhetgo_stays", JSON.stringify(next.stays));
-        localStorage.setItem("sylhetgo_guides", JSON.stringify(next.guides));
+        localStorage.setItem("sylhetgo_stays", JSON.stringify(next.stays || []));
+        localStorage.setItem("sylhetgo_guides", JSON.stringify(next.guides || []));
         localStorage.setItem("sylhetgo_bookings", JSON.stringify(next.bookings || []));
         localStorage.setItem("sylhetgo_alerts", JSON.stringify(next.alerts || []));
         localStorage.setItem("sylhetgo_posts", JSON.stringify(next.posts || []));
