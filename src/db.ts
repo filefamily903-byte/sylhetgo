@@ -329,8 +329,10 @@ const DB_KEY = "sylhetgo_local_db";
 export function getDatabase(): MockDatabase {
   const data = localStorage.getItem(DB_KEY);
   if (!data) {
-    saveDatabase(INITIAL_DB);
-    return INITIAL_DB;
+    // Clone first to prevent mutations on the module-level singleton
+    const clone = JSON.parse(JSON.stringify(INITIAL_DB));
+    saveDatabase(clone);
+    return clone;
   }
   try {
     const parsed = JSON.parse(data);
@@ -340,7 +342,7 @@ export function getDatabase(): MockDatabase {
     return parsed;
   } catch (e) {
     console.error("Error reading database", e);
-    return INITIAL_DB;
+    return JSON.parse(JSON.stringify(INITIAL_DB));
   }
 }
 
