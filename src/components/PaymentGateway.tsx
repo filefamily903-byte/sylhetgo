@@ -80,13 +80,6 @@ export default function PaymentGateway({
     setStep("payment_method");
   };
 
-  // Generate a random transaction ID based on method
-  const handleAutoSimulate = () => {
-    const prefix = selectedMethod === "bKash" ? "BK" : selectedMethod === "Nagad" ? "NG" : "SSL";
-    const rand = Math.floor(10000000 + Math.random() * 90000000);
-    setTransactionId(`${prefix}${rand}S`);
-  };
-
   // Finalize booking with payments
   const handleCompletePayment = (e: React.FormEvent) => {
     e.preventDefault();
@@ -395,13 +388,6 @@ export default function PaymentGateway({
                   <div>
                     <label className="block text-[10px] uppercase font-bold text-gray-400 mb-1 font-mono tracking-wider flex items-center justify-between">
                       <span>Transaction ID (TxnID)</span>
-                      <button
-                        type="button"
-                        onClick={handleAutoSimulate}
-                        className="text-[10px] text-pink-600 hover:text-pink-700 font-mono font-bold hover:underline cursor-pointer flex items-center gap-1"
-                      >
-                        ⚡ Simulate Instant Payment
-                      </button>
                     </label>
                     <input
                       type="text"
