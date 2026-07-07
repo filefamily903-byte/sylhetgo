@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
 import { MockDatabase, EcoStay, TransportRide, LocalGuide, EcoAttraction, DiningSpot, HaorMetric, EmergencyAlert, CommunityPost, EcoBooking } from "./types";
 import { getDatabase, saveDatabase } from "./db";
 
@@ -157,11 +157,7 @@ export function DBProvider({ children }: { children: React.ReactNode }) {
     // 1. Stays Synchronization
     const localStays = localStorage.getItem("sylhetgo_stays");
     if (localStays) {
-      try {
-        initialDb.stays = JSON.parse(localStays);
-      } catch (e) {
-        console.error("Error parsing local stays", e);
-      }
+      try { initialDb.stays = JSON.parse(localStays); } catch (e) { console.error(e); }
     } else {
       localStorage.setItem("sylhetgo_stays", JSON.stringify(initialDb.stays));
     }
@@ -169,11 +165,7 @@ export function DBProvider({ children }: { children: React.ReactNode }) {
     // 2. Guides Synchronization
     const localGuides = localStorage.getItem("sylhetgo_guides");
     if (localGuides) {
-      try {
-        initialDb.guides = JSON.parse(localGuides);
-      } catch (e) {
-        console.error("Error parsing local guides", e);
-      }
+      try { initialDb.guides = JSON.parse(localGuides); } catch (e) { console.error(e); }
     } else {
       localStorage.setItem("sylhetgo_guides", JSON.stringify(initialDb.guides));
     }
@@ -181,16 +173,21 @@ export function DBProvider({ children }: { children: React.ReactNode }) {
     // 3. Bookings Synchronization
     const localBookings = localStorage.getItem("sylhetgo_bookings");
     if (localBookings) {
-      try {
-        initialDb.bookings = JSON.parse(localBookings);
-      } catch (e) {
-        console.error("Error parsing local bookings", e);
-      }
+      try { initialDb.bookings = JSON.parse(localBookings); } catch (e) { console.error(e); }
     } else {
       localStorage.setItem("sylhetgo_bookings", JSON.stringify(initialDb.bookings || []));
     }
 
-    // Save back to general db
+    // 4. Alerts, Posts & Attractions Synchronization to avoid empty states on reload
+    const localAlerts = localStorage.getItem("sylhetgo_alerts");
+    if (localAlerts) try { initialDb.alerts = JSON.parse(localAlerts); } catch {}
+    
+    const localPosts = localStorage.getItem("sylhetgo_posts");
+    if (localPosts) try { initialDb.posts = JSON.parse(localPosts); } catch {}
+
+    const localAttractions = localStorage.getItem("sylhetgo_attractions");
+    if (localAttractions) try { initialDb.attractions = JSON.parse(localAttractions); } catch {}
+
     try {
       saveDatabase(initialDb);
     } catch (e) {
@@ -200,48 +197,28 @@ export function DBProvider({ children }: { children: React.ReactNode }) {
     return initialDb;
   });
 
-  // Event listener to sync updates across tabs/windows (e.g., from separate admin panel)
-  React.useEffect(() => {
+  // Sync entries from other tabs/windows
+  useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === "sylhetgo_stays") {
-        try {
-          const parsed = e.newValue ? JSON.parse(e.newValue) : [];
-          setDb(prev => {
-            const next = { ...prev, stays: parsed };
-            saveDatabase(next);
-            return next;
-          });
-        } catch (err) {
-          console.error("Failed to parse stays from storage", err);
-        }
-      } else if (e.key === "sylhetgo_guides") {
-        try {
-          const parsed = e.newValue ? JSON.parse(e.newValue) : [];
-          setDb(prev => {
-            const next = { ...prev, guides: parsed };
-            saveDatabase(next);
-            return next;
-          });
-        } catch (err) {
-          console.error("Failed to parse guides from storage", err);
-        }
-      } else if (e.key === "sylhetgo_bookings") {
-        try {
-          const parsed = e.newValue ? JSON.parse(e.newValue) : [];
-          setDb(prev => {
-            const next = { ...prev, bookings: parsed };
-            saveDatabase(next);
-            return next;
-          });
-        } catch (err) {
-          console.error("Failed to parse bookings from storage", err);
-        }
+      const keysSupported = ["sylhetgo_stays", "sylhetgo_guides", "sylhetgo_bookings", "sylhetgo_alerts", "sylhetgo_posts", "sylhetgo_attractions"];
+      if (!e.key || !keysSupported.includes(e.key)) return;
+
+      try {
+        const parsed = e.newValue ? JSON.parse(e.newValue) : [];
+        const fieldName = e.key.replace("sylhetgo_", ""); // mapping to stays, guides, bookings etc.
+        
+        setDb(prev => {
+          const next = { ...prev, [fieldName]: parsed };
+          saveDatabase(next);
+          return next;
+        });
+      } catch (err) {
+        console.error(`Failed to parse ${e.key} from storage`, err);
       }
     };
+
     window.addEventListener("storage", handleStorageChange);
-    return () => {
-      window.removeEventListener("storage", handleStorageChange);
-    };
+    return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
   const updateAndSave = (updater: (prev: MockDatabase) => MockDatabase) => {
@@ -249,10 +226,13 @@ export function DBProvider({ children }: { children: React.ReactNode }) {
       const next = updater(prev);
       try {
         saveDatabase(next);
-        // Write to separate individual keys for cross-project sync!
-        localStorage.setItem("sylhetgo_stays", JSON.stringify(next.stays));
-        localStorage.setItem("sylhetgo_guides", JSON.stringify(next.guides));
+        // Sync all core arrays to individual localStorage keys for cross-project capability
+        localStorage.setItem("sylhetgo_stays", JSON.stringify(next.stays || []));
+        localStorage.setItem("sylhetgo_guides", JSON.stringify(next.guides || []));
         localStorage.setItem("sylhetgo_bookings", JSON.stringify(next.bookings || []));
+        localStorage.setItem("sylhetgo_alerts", JSON.stringify(next.alerts || []));
+        localStorage.setItem("sylhetgo_posts", JSON.stringify(next.posts || []));
+        localStorage.setItem("sylhetgo_attractions", JSON.stringify(next.attractions || []));
       } catch (e) {
         console.error("Failed to save database to localStorage", e);
       }
@@ -262,19 +242,10 @@ export function DBProvider({ children }: { children: React.ReactNode }) {
 
   // Stays CRUD
   const addStay = (stay: Omit<EcoStay, "id" | "rating" | "ecoScore" | "available">) => {
-    updateAndSave((prev) => {
-      const newStay: EcoStay = {
-        ...stay,
-        id: `stay-${Date.now()}`,
-        rating: 4.8,
-        ecoScore: 96,
-        available: true
-      };
-      return {
-        ...prev,
-        stays: [...prev.stays, newStay]
-      };
-    });
+    updateAndSave((prev) => ({
+      ...prev,
+      stays: [...prev.stays, { ...stay, id: `stay-${Date.now()}`, rating: 4.8, ecoScore: 96, available: true }]
+    }));
   };
 
   const updateStay = (id: string, updated: Partial<EcoStay>) => {
@@ -293,19 +264,10 @@ export function DBProvider({ children }: { children: React.ReactNode }) {
 
   // Transport CRUD
   const addTransport = (ride: Omit<TransportRide, "id" | "rating" | "available" | "badge">) => {
-    updateAndSave((prev) => {
-      const newRide: TransportRide = {
-        ...ride,
-        id: `trans-${Date.now()}`,
-        rating: 4.8,
-        badge: "Eco Vetted",
-        available: true
-      };
-      return {
-        ...prev,
-        transport: [...prev.transport, newRide]
-      };
-    });
+    updateAndSave((prev) => ({
+      ...prev,
+      transport: [...prev.transport, { ...ride, id: `trans-${Date.now()}`, rating: 4.8, badge: "Eco Vetted", available: true }]
+    }));
   };
 
   const updateTransport = (id: string, updated: Partial<TransportRide>) => {
@@ -324,19 +286,10 @@ export function DBProvider({ children }: { children: React.ReactNode }) {
 
   // Guides CRUD
   const addGuide = (guide: Omit<LocalGuide, "id" | "rating" | "available" | "badge">) => {
-    updateAndSave((prev) => {
-      const newGuide: LocalGuide = {
-        ...guide,
-        id: `guide-${Date.now()}`,
-        rating: 5.0,
-        badge: "Eco Guide",
-        available: true
-      };
-      return {
-        ...prev,
-        guides: [...prev.guides, newGuide]
-      };
-    });
+    updateAndSave((prev) => ({
+      ...prev,
+      guides: [...prev.guides, { ...guide, id: `guide-${Date.now()}`, rating: 5.0, badge: "Eco Guide", available: true }]
+    }));
   };
 
   const updateGuide = (id: string, updated: Partial<LocalGuide>) => {
@@ -356,32 +309,19 @@ export function DBProvider({ children }: { children: React.ReactNode }) {
   const toggleGuideVerification = (id: string) => {
     updateAndSave((prev) => ({
       ...prev,
-      guides: prev.guides.map((g) => {
-        if (g.id === id) {
-          const isVerified = g.badge === "Verified Local Guide";
-          return {
-            ...g,
-            badge: isVerified ? "Eco Guide" : "Verified Local Guide"
-          };
-        }
-        return g;
-      })
+      guides: prev.guides.map((g) => g.id === id ? {
+        ...g,
+        badge: g.badge === "Verified Local Guide" ? "Eco Guide" : "Verified Local Guide"
+      } : g)
     }));
   };
 
   // Attractions CRUD
   const addAttraction = (attraction: Omit<EcoAttraction, "id" | "rating">) => {
-    updateAndSave((prev) => {
-      const newAttr: EcoAttraction = {
-        ...attraction,
-        id: `attr-${Date.now()}`,
-        rating: 4.8
-      };
-      return {
-        ...prev,
-        attractions: [...prev.attractions, newAttr]
-      };
-    });
+    updateAndSave((prev) => ({
+      ...prev,
+      attractions: [...prev.attractions, { ...attraction, id: `attr-${Date.now()}`, rating: 4.8 }]
+    }));
   };
 
   const updateAttraction = (id: string, updated: Partial<EcoAttraction>) => {
@@ -409,22 +349,22 @@ export function DBProvider({ children }: { children: React.ReactNode }) {
   // Reset database helper
   const resetDatabase = () => {
     localStorage.removeItem("sylhetgo_local_db");
+    localStorage.removeItem("sylhetgo_stays");
+    localStorage.removeItem("sylhetgo_guides");
+    localStorage.removeItem("sylhetgo_bookings");
+    localStorage.removeItem("sylhetgo_alerts");
+    localStorage.removeItem("sylhetgo_posts");
+    localStorage.removeItem("sylhetgo_attractions");
     const freshDb = getDatabase();
     setDb(freshDb);
   };
 
   // Alerts CRUD
   const addAlert = (alert: Omit<EmergencyAlert, "id">) => {
-    updateAndSave((prev) => {
-      const newAlert: EmergencyAlert = {
-        ...alert,
-        id: `alert-${Date.now()}`
-      };
-      return {
-        ...prev,
-        alerts: [newAlert, ...prev.alerts]
-      };
-    });
+    updateAndSave((prev) => ({
+      ...prev,
+      alerts: [{ ...alert, id: `alert-${Date.now()}` }, ...prev.alerts]
+    }));
   };
 
   const deleteAlert = (id: string) => {
@@ -436,19 +376,10 @@ export function DBProvider({ children }: { children: React.ReactNode }) {
 
   // Posts CRUD
   const addPost = (post: Omit<CommunityPost, "id" | "likes" | "commentsCount" | "timestamp">) => {
-    updateAndSave((prev) => {
-      const newPost: CommunityPost = {
-        ...post,
-        id: `post-${Date.now()}`,
-        likes: 0,
-        commentsCount: 0,
-        timestamp: "Just Now"
-      };
-      return {
-        ...prev,
-        posts: [newPost, ...prev.posts]
-      };
-    });
+    updateAndSave((prev) => ({
+      ...prev,
+      posts: [{ ...post, id: `post-${Date.now()}`, likes: 0, commentsCount: 0, timestamp: "Just Now" }, ...prev.posts]
+    }));
   };
 
   const deletePost = (id: string) => {
@@ -474,18 +405,10 @@ export function DBProvider({ children }: { children: React.ReactNode }) {
 
   // Bookings CRUD
   const addBooking = (booking: Omit<EcoBooking, "id" | "status" | "timestamp">) => {
-    updateAndSave((prev) => {
-      const newBooking: EcoBooking = {
-        ...booking,
-        id: `book-${Date.now()}`,
-        status: "Pending",
-        timestamp: new Date().toLocaleString()
-      };
-      return {
-        ...prev,
-        bookings: [newBooking, ...(prev.bookings || [])]
-      };
-    });
+    updateAndSave((prev) => ({
+      ...prev,
+      bookings: [{ ...booking, id: `book-${Date.now()}`, status: "Pending", timestamp: new Date().toLocaleString() }, ...(prev.bookings || [])]
+    }));
   };
 
   const updateBookingStatus = (id: string, status: "Pending" | "Approved" | "Rejected", paymentStatus?: "Unpaid" | "Paid/Verifying" | "Verified") => {
@@ -514,10 +437,10 @@ export function DBProvider({ children }: { children: React.ReactNode }) {
         transport: db.transport,
         guides: db.guides,
         attractions: db.attractions,
-        dining: db.dining,
+        dining: db.dining || [],
         haor: db.haor,
-        alerts: db.alerts,
-        posts: db.posts,
+        alerts: db.alerts || [],
+        posts: db.posts || [],
         bookings: db.bookings || [],
         
         addStay,
